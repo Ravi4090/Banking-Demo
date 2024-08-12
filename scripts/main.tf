@@ -114,55 +114,6 @@ resource "aws_instance" "kubernatesmaster" {
 }
 
 
-
-resource "aws_instance" "kubernatesworker" {
-  ami             = "ami-04b70fa74e45c3917"
-  instance_type   = "t2.micro"
-  subnet_id       = aws_subnet.subnet-1.id
-  key_name        = "web-key"
-  security_groups = [aws_security_group.project-securitygroup.id]
-  tags = {
-    Name = "Kubernates-Worker"
-  }
-
-  provisioner "remote-exec" {
-      inline = [ "echo 'wait to start instance' "]
-  }
-  connection {
-    type        = "ssh"
-    user        = "ubuntu"
-    private_key = tls_private_key.web-key.private_key_pem
-    host        = self.public_ip
-  }
-   provisioner "local-exec" {
-        command = " echo ${aws_instance.kubernatesworker.public_ip} > inventory "
-  }
-   provisioner "local-exec" {
-       command = "ansible-playbook /var/lib/jenkins/workspace/Banking/scripts/k8s-worker-setup.yml "
-  }
-  depends_on = [aws_instance.kubernatesmaster]
-}
-
-resource "null_resource" "local_command" {
-  
-   provisioner "local-exec" {
-        command = " echo ${aws_instance.kubernatesmaster.public_ip} > inventory "
-  }
-   
-   provisioner "local-exec" {
-    command = "ansible-playbook /var/lib/jenkins/workspace/Banking/scripts/monitring-deployment.yml"
-  }
-
-   provisioner "local-exec" {
-    command = "ansible-playbook /var/lib/jenkins/workspace/Banking/scripts/deployservice.yml"
-  }
-  depends_on = [aws_instance.kubernatesworker]
-
-}
-
-// check for errors newly added part of code
-
-
 resource "aws_instance" "monitringserver" {
   ami             = "ami-04b70fa74e45c3917"
   instance_type   = "t2.micro"
@@ -188,8 +139,5 @@ resource "aws_instance" "monitringserver" {
    provisioner "local-exec" {
   command = "ansible-playbook /var/lib/jenkins/workspace/Banking/scripts/monitring.yml "
   }
-depends_on = [null_resource.local_command]
-  
- 
   
 }
